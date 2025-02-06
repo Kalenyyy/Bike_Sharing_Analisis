@@ -72,6 +72,24 @@ elif menu == "Pertanyaan Satu":
     }
     merged_df["weathersit"] = merged_df["weathersit"].map(weather_mapping)
     
+    # Sidebar filter untuk memilih musim
+    selected_season = st.sidebar.selectbox("Pilih Musim:", ["All"] + list(season_mapping.values()))
+
+    # Sidebar filter untuk memilih cuaca
+    selected_weather = st.sidebar.selectbox("Pilih Cuaca:", ["All"] + list(weather_mapping.values()))
+
+    # Filter data berdasarkan musim dan cuaca
+    filtered_df = merged_df.copy()
+
+    if selected_season != "All":
+        filtered_df = filtered_df[filtered_df["season"] == selected_season]
+    if selected_weather != "All":
+        filtered_df = filtered_df[filtered_df["weathersit"] == selected_weather]
+
+    # Menampilkan data yang telah difilter
+    st.subheader(f"Data untuk Musim: {selected_season} dan Cuaca: {selected_weather}")
+    st.dataframe(filtered_df.head())
+    
     # Rata-rata penyewaan berdasarkan musim
     season_avg = merged_df.groupby("season")["cnt_hour"].mean().reset_index()
     season_avg.columns = ["Season", "Avg Rentals"]
