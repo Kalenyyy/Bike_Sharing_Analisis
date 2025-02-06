@@ -36,6 +36,13 @@ merged_df = remove_outliers(merged_df)
 # Sidebar
 st.sidebar.title("Menu Navigasi")
 menu = st.sidebar.selectbox("Pilih Menu:", ["Home", "Lihat Dataset", "Pertanyaan Satu", "Pertanyaan Dua", "Pertanyaan Tiga", "Binning", "Kesimpulan"])
+tahun = st.sidebar.selectbox("Pilih Tahun:", ["All", 2011, 2012])
+
+# Filter data berdasarkan tahun yang dipilih (sudah ada di sidebar)
+if tahun == "All":
+    data_filtered = merged_df
+else:
+    data_filtered = merged_df[merged_df['dteday'].dt.year == tahun]
 
 # Halaman Home
 if menu == "Home":
@@ -46,15 +53,16 @@ if menu == "Home":
     2. Apakah hari kerja (workingday) memiliki dampak signifikan terhadap jumlah penyewaan sepeda?
     3. Apakah suhu (temp) atau kelembapan (hum) memiliki hubungan signifikan dengan jumlah penyewaan sepeda?
     """)
+    
     st.subheader("Deskripsi Data")
-    st.write(merged_df.describe())
+    st.write(data_filtered.describe())  # Menampilkan deskripsi data yang sudah difilter
     st.subheader("Dataframe")
-    st.dataframe(merged_df.head())
+    st.dataframe(data_filtered.head())  # Menampilkan data yang sudah difilter
     
 # Halaman Lihat Dataset
 elif menu == "Lihat Dataset":
     st.title("Lihat Dataset")
-    st.dataframe(merged_df.head())
+    st.dataframe(data_filtered.head())
     
 # Pertanyaan Satu: Bagaimana prediksi jumlah total penyewaan sepeda (casual dan registered) pada hari tertentu berdasarkan musim, cuaca, dan suhu?
 elif menu == "Pertanyaan Satu":
@@ -62,7 +70,7 @@ elif menu == "Pertanyaan Satu":
     
     # Mapping season ke bentuk teks
     season_mapping = {1: "Spring", 2: "Summer", 3: "Fall", 4: "Winter"}
-    merged_df["season"] = merged_df["season"].map(season_mapping)
+    data_filtered["season"] = data_filtered["season"].map(season_mapping)
 
     # Mapping weathersit ke bentuk teks
     weather_mapping = {
@@ -70,37 +78,19 @@ elif menu == "Pertanyaan Satu":
         2: "Mist/Cloudy",
         3: "Light Snow/Rain"
     }
-    merged_df["weathersit"] = merged_df["weathersit"].map(weather_mapping)
-    
-    # Sidebar filter untuk memilih musim
-    selected_season = st.sidebar.selectbox("Pilih Musim:", ["All"] + list(season_mapping.values()))
-
-    # Sidebar filter untuk memilih cuaca
-    selected_weather = st.sidebar.selectbox("Pilih Cuaca:", ["All"] + list(weather_mapping.values()))
-
-    # Filter data berdasarkan musim dan cuaca
-    filtered_df = merged_df.copy()
-
-    if selected_season != "All":
-        filtered_df = filtered_df[filtered_df["season"] == selected_season]
-    if selected_weather != "All":
-        filtered_df = filtered_df[filtered_df["weathersit"] == selected_weather]
-
-    # Menampilkan data yang telah difilter
-    st.subheader(f"Data untuk Musim: {selected_season} dan Cuaca: {selected_weather}")
-    st.dataframe(filtered_df.head())
+    data_filtered["weathersit"] = data_filtered["weathersit"].map(weather_mapping)
     
     # Rata-rata penyewaan berdasarkan musim
-    season_avg = merged_df.groupby("season")["cnt_hour"].mean().reset_index()
+    season_avg = data_filtered.groupby("season")["cnt_hour"].mean().reset_index()
     season_avg.columns = ["Season", "Avg Rentals"]
     
     # Rata-rata penyewaan berdasarkan cuaca
-    weather_avg = merged_df.groupby("weathersit")["cnt_hour"].mean().reset_index()
+    weather_avg = data_filtered.groupby("weathersit")["cnt_hour"].mean().reset_index()
     weather_avg.columns = ["Weather", "Avg Rentals"]
 
     # Rata-rata penyewaan berdasarkan kategori suhu
-    merged_df["temp_category"] = pd.cut(merged_df["temp"], bins=[0, 0.25, 0.5, 0.75, 1], labels=["Very Cold", "Cold", "Warm", "Hot"])
-    temp_avg = merged_df.groupby("temp_category")["cnt_hour"].mean().reset_index()
+    data_filtered["temp_category"] = pd.cut(data_filtered["temp"], bins=[0, 0.25, 0.5, 0.75, 1], labels=["Very Cold", "Cold", "Warm", "Hot"])
+    temp_avg = data_filtered.groupby("temp_category")["cnt_hour"].mean().reset_index()
     temp_avg.columns = ["Temperature Category", "Avg Rentals"]
 
     # Tampilkan tabel hasil rata-rata
@@ -138,35 +128,36 @@ elif menu == "Pertanyaan Satu":
     st.pyplot(plt)
 
     # Penjelasan
-    st.markdown("""
+    st.markdown(f"""
     ### Rata-rata Penyewaan Berdasarkan Musim
-    - **Fall (Musim Gugur)**: Penyewaan tertinggi dengan rata-rata 170.32 penyewaan per hari.
-    - **Winter (Musim Dingin)**: Rata-rata 152.75 penyewaan per hari, sedikit lebih rendah dari musim gugur.
-    - **Summer (Musim Panas)**: Rata-rata 147.89 penyewaan per hari, sedikit lebih rendah dibandingkan musim gugur dan musim dingin.
-    - **Spring (Musim Semi)**: Penyewaan terendah dengan rata-rata 98.54 penyewaan per hari.
+    - **Fall (Musim Gugur)**: Penyewaan tertinggi dengan rata-rata {season_avg.loc[season_avg['Season'] == 'Fall', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
+    - **Winter (Musim Dingin)**: Rata-rata {season_avg.loc[season_avg['Season'] == 'Winter', 'Avg Rentals'].values[0]:.2f} penyewaan per hari, sedikit lebih rendah dari musim gugur.
+    - **Summer (Musim Panas)**: Rata-rata {season_avg.loc[season_avg['Season'] == 'Summer', 'Avg Rentals'].values[0]:.2f} penyewaan per hari, sedikit lebih rendah dibandingkan musim gugur dan musim dingin.
+    - **Spring (Musim Semi)**: Penyewaan terendah dengan rata-rata {season_avg.loc[season_avg['Season'] == 'Spring', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
 
     ### Rata-rata Penyewaan Berdasarkan Cuaca
-    - **Clear/Partly Cloudy (Jernih/Separa Berawan)**: Penyewaan tertinggi dengan rata-rata 149.04 penyewaan per hari.
-    - **Light Snow/Rain (Salju/Hujan Ringan)**: Penyewaan terendah dengan rata-rata 94.33 penyewaan per hari.
-    - **Mist/Cloudy (Kabut/Berawan)**: Rata-rata 140.57 penyewaan per hari.
+    - **Clear/Partly Cloudy (Jernih/Separa Berawan)**: Penyewaan tertinggi dengan rata-rata {weather_avg.loc[weather_avg['Weather'] == 'Clear/Partly Cloudy', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
+    - **Light Snow/Rain (Salju/Hujan Ringan)**: Penyewaan terendah dengan rata-rata {weather_avg.loc[weather_avg['Weather'] == 'Light Snow/Rain', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
+    - **Mist/Cloudy (Kabut/Berawan)**: Rata-rata {weather_avg.loc[weather_avg['Weather'] == 'Mist/Cloudy', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
 
     ### Rata-rata Penyewaan Berdasarkan Kategori Suhu
-    - **Very Cold (Suhu Sangat Dingin)**: Penyewaan terendah dengan rata-rata 65.49 penyewaan per hari.
-    - **Cold (Suhu Dingin)**: Rata-rata 126.53 penyewaan per hari.
-    - **Warm (Suhu Hangat)**: Rata-rata 164.85 penyewaan per hari.
-    - **Hot (Suhu Panas)**: Penyewaan tertinggi dengan rata-rata 242.09 penyewaan per hari.
+    - **Very Cold (Suhu Sangat Dingin)**: Penyewaan terendah dengan rata-rata {temp_avg.loc[temp_avg['Temperature Category'] == 'Very Cold', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
+    - **Cold (Suhu Dingin)**: Rata-rata {temp_avg.loc[temp_avg['Temperature Category'] == 'Cold', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
+    - **Warm (Suhu Hangat)**: Rata-rata {temp_avg.loc[temp_avg['Temperature Category'] == 'Warm', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
+    - **Hot (Suhu Panas)**: Penyewaan tertinggi dengan rata-rata {temp_avg.loc[temp_avg['Temperature Category'] == 'Hot', 'Avg Rentals'].values[0]:.2f} penyewaan per hari.
 
     ### Kesimpulan
     Penyewaan sepeda lebih tinggi pada musim gugur, cuaca cerah, dan suhu panas, sementara lebih rendah pada musim semi, cuaca berawan, dan suhu sangat dingin.
     """)
+
     
 # Pertanyaan Dua: Apakah hari kerja (workingday) memiliki dampak signifikan terhadap jumlah penyewaan sepeda?
 elif menu == "Pertanyaan Dua":
     st.title("Apakah hari kerja (workingday) memiliki dampak signifikan terhadap jumlah penyewaan sepeda?")
 
     # Analisis rata-rata jumlah penyewaan berdasarkan hari kerja dan hari libur
-    avg_rentals_workingday = merged_df[merged_df['workingday'] == 1]['cnt_hour'].mean()
-    avg_rentals_holiday = merged_df[merged_df['workingday'] == 0]['cnt_hour'].mean()
+    avg_rentals_workingday = data_filtered[data_filtered['workingday'] == 1]['cnt_hour'].mean()
+    avg_rentals_holiday = data_filtered[data_filtered['workingday'] == 0]['cnt_hour'].mean()
 
     # Hitung selisih
     difference = avg_rentals_workingday - avg_rentals_holiday
@@ -195,14 +186,14 @@ elif menu == "Pertanyaan Dua":
     st.pyplot(plt)
 
     # Penjelasan
-    st.markdown("""
+    st.markdown(f"""
     ### Penjelasan Hasil Analisis Rata-rata Penyewaan
 
-    Berdasarkan hasil analisis rata-rata jumlah penyewaan sepeda, didapatkan perbandingan antara hari kerja dan hari libur sebagai berikut:
+    Berdasarkan hasil analisis rata-rata jumlah penyewaan sepeda pada tahun yang dipilih, didapatkan perbandingan antara hari kerja dan hari libur sebagai berikut:
 
-    - **Hari Kerja**: Rata-rata penyewaan sepeda pada hari kerja adalah **152.22**.
-    - **Hari Libur**: Rata-rata penyewaan sepeda pada hari libur adalah **114.18**.
-    - **Selisih**: Terdapat selisih **38.03** antara jumlah penyewaan pada hari kerja dan hari libur.
+    - **Hari Kerja**: Rata-rata penyewaan sepeda pada hari kerja adalah **{avg_rentals_workingday:.2f}**.
+    - **Hari Libur**: Rata-rata penyewaan sepeda pada hari libur adalah **{avg_rentals_holiday:.2f}**.
+    - **Selisih**: Terdapat selisih **{difference:.2f}** antara jumlah penyewaan pada hari kerja dan hari libur.
 
     **Interpretasi**:
     - Hasil ini menunjukkan bahwa pada **hari kerja**, jumlah penyewaan sepeda cenderung lebih tinggi dibandingkan pada **hari libur**. Hal ini dapat disebabkan oleh lebih banyak orang yang menggunakan sepeda untuk aktivitas sehari-hari, seperti bekerja atau berpergian.
@@ -210,14 +201,15 @@ elif menu == "Pertanyaan Dua":
 
     Dengan demikian, kita bisa menyimpulkan bahwa **hari kerja** memberikan dampak yang lebih besar terhadap **jumlah penyewaan sepeda** dibandingkan dengan **hari libur**.
     """)
+
     
 # Pertanyaan Tiga: Apakah suhu (temp) atau kelembapan (hum) memiliki hubungan signifikan dengan jumlah penyewaan sepeda?
 elif menu == "Pertanyaan Tiga":
     st.title("Apakah suhu (temp) atau kelembapan (hum) memiliki hubungan signifikan dengan jumlah penyewaan sepeda?")
 
-    # Menghitung korelasi Pearson
-    corr_temp, _ = pearsonr(merged_df['temp'], merged_df['cnt_hour'])
-    corr_hum, _ = pearsonr(merged_df['hum'], merged_df['cnt_hour'])
+     # Menghitung korelasi Pearson berdasarkan data yang telah difilter
+    corr_temp, _ = pearsonr(data_filtered['temp'], data_filtered['cnt_hour'])
+    corr_hum, _ = pearsonr(data_filtered['hum'], data_filtered['cnt_hour'])
 
     # Menampilkan hasil analisis dalam bentuk tabel
     analysis_result = [
@@ -248,18 +240,18 @@ elif menu == "Pertanyaan Tiga":
     Untuk visualisasi, berikut adalah scatter plot yang menunjukkan hubungan suhu dan kelembapan dengan jumlah penyewaan sepeda:
 
     """)
-    
+
     # Visualisasi hubungan suhu vs penyewaan
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     # Scatter plot suhu vs penyewaan
-    sns.scatterplot(x=merged_df['temp'], y=merged_df['cnt_hour'], alpha=0.5, color='blue', ax=axes[0])
+    sns.scatterplot(x=data_filtered['temp'], y=data_filtered['cnt_hour'], alpha=0.5, color='blue', ax=axes[0])
     axes[0].set_xlabel('Suhu (temp)')
     axes[0].set_ylabel('Jumlah Penyewaan Sepeda')
     axes[0].set_title(f'Korelasi Suhu vs Penyewaan (r = {corr_temp:.2f})')
 
     # Scatter plot kelembapan vs penyewaan
-    sns.scatterplot(x=merged_df['hum'], y=merged_df['cnt_hour'], alpha=0.5, color='red', ax=axes[1])
+    sns.scatterplot(x=data_filtered['hum'], y=data_filtered['cnt_hour'], alpha=0.5, color='red', ax=axes[1])
     axes[1].set_xlabel('Kelembapan (hum)')
     axes[1].set_ylabel('Jumlah Penyewaan Sepeda')
     axes[1].set_title(f'Korelasi Kelembapan vs Penyewaan (r = {corr_hum:.2f})')
@@ -270,6 +262,8 @@ elif menu == "Pertanyaan Tiga":
 # Halaman Binning
 elif menu == "Binning":
     st.title("Analisis Clustering Lanjutan - Binning")
+
+
 
     # Fungsi untuk mengategorikan waktu
     def categorize_time(hour):
@@ -282,11 +276,11 @@ elif menu == "Binning":
         else:
             return 'Night'
 
-    # Pastikan merged_df sudah ada sebelumnya, dan buat kolom baru untuk kategori waktu
-    merged_df['daypart'] = merged_df['hr'].apply(categorize_time)
+    # Pastikan data_filtered sudah ada sebelumnya, dan buat kolom baru untuk kategori waktu
+    data_filtered['daypart'] = data_filtered['hr'].apply(categorize_time)
 
     # Hitung total penyewaan berdasarkan kategori waktu
-    daypart_counts = merged_df.groupby('daypart')['cnt_hour'].sum().reset_index()
+    daypart_counts = data_filtered.groupby('daypart')['cnt_hour'].sum().reset_index()
 
     # Urutkan kategori waktu agar sesuai dengan urutan logis
     daypart_counts['daypart'] = pd.Categorical(daypart_counts['daypart'], 
@@ -295,8 +289,8 @@ elif menu == "Binning":
     daypart_counts = daypart_counts.sort_values('daypart')
 
     # Menampilkan penjelasan menggunakan st.markdown
-    st.markdown("""
-    ### Analisis Penyewaan Sepeda Berdasarkan Waktu dalam Sehari
+    st.markdown(f"""
+    ### Analisis Penyewaan Sepeda Berdasarkan Waktu dalam Sehari ({'All' if tahun == 'All' else tahun})
 
     Pada analisis ini, kita akan membahas total penyewaan sepeda berdasarkan waktu dalam sehari, yang dikelompokkan menjadi empat kategori waktu utama: **Pagi (Morning)**, **Siang (Afternoon)**, **Sore (Evening)**, dan **Malam (Night)**. 
 
@@ -313,30 +307,47 @@ elif menu == "Binning":
 
     #### Tabel Hasil Analisis
     """)
+    
     # Menampilkan hasil tabel di Streamlit
-    st.subheader("Total Penyewaan Berdasarkan Kategori Waktu")
+    st.subheader(f"Total Penyewaan Berdasarkan Kategori Waktu ({'All' if tahun == 'All' else tahun})")
     st.table(daypart_counts)
 
     st.markdown("""
     #### Visualisasi Penyewaan Sepeda Berdasarkan Waktu
     Berikut adalah grafik yang menggambarkan jumlah penyewaan sepeda berdasarkan waktu dalam sehari. Grafik ini membantu kita memahami pola penyewaan pada berbagai waktu sepanjang hari.
-
-    Grafik ini menunjukkan:
-    - **Waktu Pagi (Morning)** memiliki penyewaan yang relatif lebih sedikit dibandingkan dengan waktu lainnya.
-    - **Waktu Sore (Evening)** dan **Malam (Night)** memiliki jumlah penyewaan yang lebih tinggi, menunjukkan bahwa permintaan sepeda meningkat pada waktu tersebut.
-
     """)
 
+    # Menyesuaikan teks berdasarkan tahun yang dipilih
+    if tahun == "All":
+        st.markdown("""
+        Grafik ini menunjukkan:
+        - **Waktu Pagi (Morning)** memiliki penyewaan yang relatif lebih sedikit dibandingkan dengan waktu lainnya.
+        - **Waktu Sore (Evening)** dan **Malam (Night)** memiliki jumlah penyewaan yang lebih tinggi, menunjukkan bahwa permintaan sepeda meningkat pada waktu tersebut.
+        """)
+    elif tahun == 2011:
+        st.markdown("""
+        Grafik ini menunjukkan:
+        - **Waktu Siang (Afternoon)** dan **Malam (Night)** memiliki jumlah penyewaan yang paling tinggi pada tahun 2011, menunjukkan bahwa permintaan sepeda meningkat pada waktu tersebut.
+        - **Waktu Pagi (Morning)** memiliki penyewaan yang relatif lebih sedikit dibandingkan dengan waktu lainnya.
+        """)
+    else:
+        st.markdown("""
+        Grafik ini menunjukkan:
+        - **Waktu Pagi (Morning)** memiliki penyewaan yang relatif lebih sedikit dibandingkan dengan waktu lainnya.
+        - **Waktu Sore (Evening)** dan **Malam (Night)** memiliki jumlah penyewaan yang lebih tinggi, menunjukkan bahwa permintaan sepeda meningkat pada waktu tersebut.
+        """)
+
     # Visualisasi data
-    st.subheader("Grafik Penyewaan Sepeda Berdasarkan Waktu")
+    st.subheader(f"Grafik Penyewaan Sepeda Berdasarkan Waktu ({'All' if tahun == 'All' else tahun})")
     plt.figure(figsize=(8,5))
     plt.bar(daypart_counts['daypart'], daypart_counts['cnt_hour'], color=['blue', 'orange', 'green', 'red'])
     plt.xlabel('Time of Day')
     plt.ylabel('Total Bike Rentals')
-    plt.title('Bike Rentals by Time of Day')
+    plt.title(f'Bike Rentals by Time of Day ({'All' if tahun == 'All' else tahun})')
 
     # Tampilkan grafik di Streamlit
     st.pyplot(plt)
+
 
     
 # Kesimpulan
