@@ -63,14 +63,14 @@ pip install -r requirements.txt
 ### Menjalankan Dashboard
 1. Clone repositori ini:
 ```bash
-git clone https://github.com/username/bike-sharing-analysis.git
+git clone https://github.com/Kalenyyy/Bike_Sharing_Analisis.git
 cd bike-sharing-analysis
 ```
 
 2. Jalankan Streamlit dashboard:
 ```bash
 cd dashboard
-streamlit run dashboard.py
+streamlit run dashboard/dashboard.py
 ```
 
 ## Temuan Utama dari Analisis
